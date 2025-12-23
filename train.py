@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 import csv
 import os
+from visualize import generate_all_visualizations
 
 # --- 1. Hyperparameters (Optimized for CUDA) ---
 # vocab size = 113
@@ -122,6 +123,9 @@ criterion = nn.CrossEntropyLoss()
 # --- 4. Training Loop ---
 print(f"Running on: {torch.cuda.get_device_name(0) if device.type == 'cuda' else 'CPU'}")
 
+# Define visualization checkpoints
+VIZ_EPOCHS = [0, 200, 500, 1000, 1400, 2000, 4000, 6000, 8000, 9400, 10000, 12000, 14000, 16000, 20000, 30000, 40000]
+
 with open(LOG_FILE, mode='w', newline='') as f:
     writer = csv.writer(f)
     writer.writerow(['Epoch', 'Train_Loss', 'Train_Acc', 'Test_Loss', 'Test_Acc'])
@@ -142,12 +146,19 @@ for epoch in range(EPOCHS + 1):
             test_logits = model(test_x)
             test_loss = criterion(test_logits, test_y).item()
             test_acc = (test_logits.argmax(-1) == test_y).float().mean().item()
-            
+
             with open(LOG_FILE, mode='a', newline='') as f:
                 csv.writer(f).writerow([epoch, loss.item(), train_acc, test_loss, test_acc])
-                
+
             print(f"Epoch {epoch:5d} | Train Acc: {train_acc:.4f} | Test Acc: {test_acc:.4f}")
-            
+
+            # Generate visualizations at key checkpoints
+            if epoch in VIZ_EPOCHS:
+                generate_all_visualizations(model, epoch, test_x, test_y, P)
+
             if test_acc > 0.999:
                 print(f"Grokking complete at epoch {epoch}!")
+                # Generate final visualization
+                if epoch not in VIZ_EPOCHS:
+                    generate_all_visualizations(model, epoch, test_x, test_y, P)
                 break
