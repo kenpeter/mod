@@ -6,7 +6,9 @@ import csv
 import os
 
 # --- 1. Hyperparameters (Optimized for CUDA) ---
-P = 113             
+# vocab size = 113
+P = 113 
+# model dimension 128            
 D_MODEL = 128       
 N_HEADS = 4         
 D_HEAD = 32         
@@ -25,29 +27,68 @@ torch.manual_seed(SEED)
 
 # --- 2. Fast Data Generation ---
 def get_data(p, train_fraction):
-    # Generate all possible pairs (i, j)
+    # all apir
+    """
+        [0, 0]
+        [0, 1]
+        [0, 2]
+        [0, 3]
+        ...
+        [1, 0]
+        [1, 1]
+    """
+
+    # 1. prepare a+b, prepre real a+b
     all_pairs = torch.cartesian_prod(torch.arange(p), torch.arange(p))
     labels = (all_pairs[:, 0] + all_pairs[:, 1]) % p
     
-    # Add the "=" token (which is index P) to every pair
+    """
+        [113]
+        [113]
+        [113]
+        [113]
+        [113]
+        [113]
+        ...
+    """
+
+    # 2. prepare equal sign with 113
     eq_tokens = torch.full((p*p, 1), p)
+
+    # 3. merge a+b with equal sign
+    """
+        0 0 0 113
+        1 0 1 113
+        2 0 2 113
+        ...
+    """
     inputs = torch.cat([all_pairs, eq_tokens], dim=1).to(device)
     labels = labels.to(device)
     
-    # Shuffle and split
-    indices = torch.randperm(p*p)
+    # 4. split train and test, random the index
     split = int(p*p * train_fraction)
+    indices = torch.randperm(p*p)
     
+    # 5. form train x y, and form test x y
     return (inputs[indices[:split]], labels[indices[:split]], 
             inputs[indices[split:]], labels[indices[split:]])
 
 train_x, train_y, test_x, test_y = get_data(P, TRAIN_FRACTION)
 
 # --- 3. Optimized Transformer Architecture ---
+
+# class className (nn.module)
 class GrokkingTransformer(nn.Module):
+    # init
+    # self, vocab_size, model_dimension, n head, mlp_dimension
     def __init__(self, vocab_size, d_model, n_heads, d_mlp):
+        # super init
         super().__init__()
+        # token embed
+        # vocab_size = 113+1, 1 is the equal sign
+        # d_model = 128
         self.token_embedding = nn.Embedding(vocab_size, d_model)
+        # position embed
         self.pos_embedding = nn.Parameter(torch.randn(3, d_model))
         
         # Using a MultiheadAttention module for speed optimizations
