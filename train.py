@@ -17,6 +17,7 @@ D_MLP = 512
 TRAIN_FRACTION = 0.3
 WEIGHT_DECAY = 1.0  
 LR = 1e-3
+# running 40,000 epoch
 EPOCHS = 40000      
 LOG_FILE = "grokking_data.csv"
 SEED = 42
@@ -103,20 +104,23 @@ class GrokkingTransformer(nn.Module):
         self.unembed = nn.Linear(d_model, vocab_size, bias=False)
 
     def forward(self, x):
-        # Embedding + Position
+        # 1. token embed + position
         h = self.token_embedding(x) + self.pos_embedding
         
-        # Self-Attention
+        # 2. attention + residual
         attn_out, _ = self.attn(h, h, h, need_weights=False)
         h = h + attn_out
         
-        # MLP
+        # 3. MLP + residual
         h = h + self.mlp(h)
         
         # Only take the last token output (at the "=" position)
         return self.unembed(h[:, -1, :])
 
+# entire model just weights and move to device
 model = GrokkingTransformer(P + 1, D_MODEL, N_HEADS, D_MLP).to(device)
+
+# adamw
 optimizer = optim.AdamW(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY, betas=(0.9, 0.98))
 criterion = nn.CrossEntropyLoss()
 
@@ -126,22 +130,32 @@ print(f"Running on: {torch.cuda.get_device_name(0) if device.type == 'cuda' else
 # Define visualization checkpoints
 VIZ_EPOCHS = [0, 200, 500, 1000, 1400, 2000, 4000, 6000, 8000, 9400, 10000, 12000, 14000, 16000, 20000, 30000, 40000]
 
+# open the csv file
 with open(LOG_FILE, mode='w', newline='') as f:
     writer = csv.writer(f)
     writer.writerow(['Epoch', 'Train_Loss', 'Train_Acc', 'Test_Loss', 'Test_Acc'])
 
+# epochs+1, as 0 -> epochs-1, get to the real epochs
 for epoch in range(EPOCHS + 1):
+    # model train mode
     model.train()
+    # reset to zero, but actually set to none faster
     optimizer.zero_grad(set_to_none=True) # Slightly faster than zero_grad()
     
+    # we call forward function here, so need to high D to low D
     logits = model(train_x)
+    # compare prediction with label -> loss
     loss = criterion(logits, train_y)
+    # cal backward
     loss.backward()
+    # real backward
     optimizer.step()
     
     if epoch % 200 == 0:
+        # now eval mode
         model.eval()
         with torch.no_grad():
+            # train acc
             train_acc = (logits.argmax(-1) == train_y).float().mean().item()
             test_logits = model(test_x)
             test_loss = criterion(test_logits, test_y).item()
