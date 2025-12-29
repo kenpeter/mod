@@ -16,10 +16,21 @@ def create_viz_dir(epoch):
 def visualize_embedding_waves(model, epoch, viz_dir, P=113):
     """
     Original sin/cos wave visualization showing embedding projections
+    Auto-detects the top 5 most powerful frequencies using FFT
     """
     W_E = model.token_embedding.weight.data[:P].detach().cpu().numpy()
 
-    key_freqs = [14, 35, 41, 42, 52]
+    # Auto-detect top frequencies using FFT
+    fft_power = np.zeros(P)
+    for d in range(W_E.shape[1]):
+        fft_result = np.fft.fft(W_E[:, d])
+        fft_power += np.abs(fft_result) ** 2
+
+    # Find top 5 frequencies (excluding DC component at k=0)
+    valid_freqs = np.arange(1, P // 2)
+    freq_powers = fft_power[valid_freqs]
+    top_freq_indices = np.argsort(freq_powers)[-5:][::-1]
+    key_freqs = valid_freqs[top_freq_indices].tolist()
 
     fig = plt.figure(figsize=(20, 12))
     gs = fig.add_gridspec(3, 5, hspace=0.3, wspace=0.3)

@@ -157,8 +157,11 @@ for epoch in range(EPOCHS + 1):
         with torch.no_grad():
             # train acc
             train_acc = (logits.argmax(-1) == train_y).float().mean().item()
+            # test x, return test logit
             test_logits = model(test_x)
+            # test loss
             test_loss = criterion(test_logits, test_y).item()
+            # test loss
             test_acc = (test_logits.argmax(-1) == test_y).float().mean().item()
 
             with open(LOG_FILE, mode='a', newline='') as f:
