@@ -1,5 +1,7 @@
 # Grokking Modular Addition
 
+![Grokking Phenomenon](grok.png)
+
 ## Setup
 
 ```bash
