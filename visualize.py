@@ -158,7 +158,7 @@ def visualize_layer_interactions(model, epoch, viz_dir, P=113):
     plt.savefig(viz_dir / 'layer_interactions.png', dpi=150, bbox_inches='tight', facecolor='black')
     plt.close()
 
-def visualize_grokking_dashboard(model, epoch, viz_dir, P=113, log_file='log.csv'):
+def visualize_grokking_dashboard(model, epoch, viz_dir, P=113, log_file='grokking_data.csv'):
     # Create dashboard visualization similar to grokking paper/videos:
     # - 8 rows showing different Fourier frequencies
     # - Column 1: Fourier projection vs token index (shows sinusoids emerging)
